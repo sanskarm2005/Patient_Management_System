@@ -69,7 +69,10 @@ export const App = () => {
         ...entry,
         patient: safePatients.find(p => p.id === entry.patient_id)
       }));
+
       setQueue(enrichedQueue);
+
+      alert(`REFRESHED QUEUE: ${enrichedQueue.length} patients found`);
 
       // 2. PROTECTED STAFF DATA (Fetched only when logged in)
       if (user) {
