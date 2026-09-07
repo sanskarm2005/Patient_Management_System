@@ -63,8 +63,15 @@ export const App = () => {
       setPatients(safePatients);
 
       const todayStr = new Date().toISOString().split('T')[0];
-      const { data: queueList } = await supabase.from('queue_entries').select('*').eq('queue_date', todayStr);
-      
+      const { data: queueList, error: queueError } = await supabase
+        .from('queue_entries')
+        .select('*')
+        .eq('queue_date', todayStr);
+
+      console.log('TODAY:', todayStr);
+      console.log('QUEUE FROM SUPABASE:', queueList);
+      console.log('QUEUE FETCH ERROR:', queueError);
+
       const enrichedQueue = (queueList || []).map(entry => ({
         ...entry,
         patient: safePatients.find(p => p.id === entry.patient_id)
