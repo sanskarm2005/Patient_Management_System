@@ -133,8 +133,7 @@ export const ReceptionistDashboard = ({
   };
 
   // Add Patient form submit handler
-  const handleAddPatientSubmit = async (e) => {
-    e.preventDefault();
+  const handleAddPatientSubmit = async () => {
     const errors = {};
 
     if (!newPatientData.fullName.trim()) errors.fullName = 'Full Name is required';
@@ -412,50 +411,50 @@ export const ReceptionistDashboard = ({
         )}
       </div>
 
-      {/* --- ADD PATIENT MODAL --- */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title="Add Patient to Queue"
-        footer={
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleAddPatientSubmit}>Add to Queue</button>
-          </div>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <InputField
-            label="Full Name *"
-            name="fullName"
-            value={newPatientData.fullName}
-            onChange={(e) => setNewPatientData(prev => ({ ...prev, fullName: e.target.value }))}
-            placeholder="Rahul Sen"
-            error={formErrors.fullName}
-          />
-          
-          <InputField
-            label="Phone Number *"
-            name="phone"
-            value={newPatientData.phone}
-            onChange={(e) => setNewPatientData(prev => ({ ...prev, phone: e.target.value }))}
-            placeholder="9876543210"
-            error={formErrors.phone}
-          />
+        {/* --- ADD PATIENT MODAL --- */}
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          title="Add Patient to Queue"
+          footer={
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAddPatientSubmit}>Add to Queue</button>
+            </div>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <InputField
+              label="Full Name *"
+              name="fullName"
+              value={newPatientData.fullName}
+              onChange={(e) => setNewPatientData(prev => ({ ...prev, fullName: e.target.value }))}
+              placeholder="Rahul Sen"
+              error={formErrors.fullName}
+            />
+            
+            <InputField
+              label="Phone Number *"
+              name="phone"
+              value={newPatientData.phone}
+              onChange={(e) => setNewPatientData(prev => ({ ...prev, phone: e.target.value }))}
+              placeholder="9876543210"
+              error={formErrors.phone}
+            />
 
-          <SelectField
-            label="Gender"
-            name="gender"
-            value={newPatientData.gender}
-            onChange={(e) => setNewPatientData(prev => ({ ...prev, gender: e.target.value }))}
-            options={[
-              { value: 'Male', label: 'Male' },
-              { value: 'Female', label: 'Female' },
-              { value: 'Other', label: 'Other' }
-            ]}
-          />
-        </div>
-      </Modal>
+            <SelectField
+              label="Gender"
+              name="gender"
+              value={newPatientData.gender}
+              onChange={(e) => setNewPatientData(prev => ({ ...prev, gender: e.target.value }))}
+              options={[
+                { value: 'Male', label: 'Male' },
+                { value: 'Female', label: 'Female' },
+                { value: 'Other', label: 'Other' }
+              ]}
+            />
+          </div>
+        </Modal>
     </>
   );
 };
