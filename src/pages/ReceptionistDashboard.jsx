@@ -147,6 +147,8 @@ export const ReceptionistDashboard = ({
 
     setFormErrors({});
     
+    alert("Validation passed. Starting database insert...");
+    
     try {
       const assignedDoctorId = doctors[0]?.id || '11111111-1111-1111-1111-111111111111';
       const nextIdNum = patients.length + 101;
