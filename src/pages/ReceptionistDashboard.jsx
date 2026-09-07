@@ -134,6 +134,7 @@ export const ReceptionistDashboard = ({
 
   // Add Patient form submit handler
   const handleAddPatientSubmit = async () => {
+    alert("Add Patient function is running");
     const errors = {};
 
     if (!newPatientData.fullName.trim()) errors.fullName = 'Full Name is required';
