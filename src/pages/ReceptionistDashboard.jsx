@@ -161,7 +161,11 @@ export const ReceptionistDashboard = ({
         gender: newPatientData.gender || 'Male'
       }).select().single();
 
-      alert("Supabase insert request completed");
+      alert(
+        patientErr
+          ? `SUPABASE ERROR: ${patientErr.message}`
+          : `PATIENT INSERTED: ${patientData?.full_name || 'Success'}`
+      );
 
       if (patientErr) {
         console.error('Error inserting patient:', patientErr);
