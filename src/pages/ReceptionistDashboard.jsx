@@ -181,6 +181,8 @@ export const ReceptionistDashboard = ({
           metadata: { name: newPatientData.fullName, patient_id: patientIdStr }
         });
 
+        alert("Patient created. Now adding patient to queue...");
+
         await onAddPatientToQueue({
           patient_id: patientData.id,
           doctor_id: assignedDoctorId,
@@ -188,6 +190,8 @@ export const ReceptionistDashboard = ({
           reason: 'General Consultation',
           appointment_id: null
         });
+
+        alert("Patient queue function completed!");
       }
 
       setIsAddModalOpen(false);
