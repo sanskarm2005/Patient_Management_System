@@ -194,7 +194,12 @@ export const App = () => {
         queue_date: todayStr
       }).select().single();
 
-      if (error) throw error;
+      if (error) {
+        alert(`QUEUE INSERT ERROR: ${error.message}`);
+        throw error;
+      }
+
+      alert(`QUEUE INSERTED! Token: ${nextToken}`);
 
       // Log Audit Entry
       const patName = patients.find(p => p.id === data.patient_id)?.full_name || 'Patient';
@@ -218,6 +223,7 @@ export const App = () => {
       notifyOtherTabs();
     } catch (err) {
       console.error('Error adding patient to queue:', err);
+      alert(`QUEUE ERROR: ${err.message || 'Unknown error'}`);
     }
   };
 
