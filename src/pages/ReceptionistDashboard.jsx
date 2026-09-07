@@ -134,7 +134,6 @@ export const ReceptionistDashboard = ({
 
   // Add Patient form submit handler
   const handleAddPatientSubmit = async () => {
-    alert("Add Patient function is running");
     const errors = {};
 
     if (!newPatientData.fullName.trim()) errors.fullName = 'Full Name is required';
@@ -146,8 +145,6 @@ export const ReceptionistDashboard = ({
     }
 
     setFormErrors({});
-
-    alert("Validation passed. Starting database insert...");
     
     try {
       const assignedDoctorId = doctors[0]?.id || '11111111-1111-1111-1111-111111111111';
@@ -181,8 +178,6 @@ export const ReceptionistDashboard = ({
           metadata: { name: newPatientData.fullName, patient_id: patientIdStr }
         });
 
-        alert("Patient created. Now adding patient to queue...");
-
         await onAddPatientToQueue({
           patient_id: patientData.id,
           doctor_id: assignedDoctorId,
@@ -190,8 +185,6 @@ export const ReceptionistDashboard = ({
           reason: 'General Consultation',
           appointment_id: null
         });
-
-        alert("Patient queue function completed!");
       }
 
       setIsAddModalOpen(false);

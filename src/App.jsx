@@ -72,8 +72,6 @@ export const App = () => {
 
       setQueue(enrichedQueue);
 
-      alert(`REFRESHED QUEUE: ${enrichedQueue.length} patients found`);
-
       // 2. PROTECTED STAFF DATA (Fetched only when logged in)
       if (user) {
         const { data: apptList } = await supabase.from('appointments').select('*');
@@ -198,11 +196,8 @@ export const App = () => {
       }).select().single();
 
       if (error) {
-        alert(`QUEUE INSERT ERROR: ${error.message}`);
         throw error;
       }
-
-      alert(`QUEUE INSERTED! Token: ${nextToken}`);
 
       // Log Audit Entry
       const patName = patients.find(p => p.id === data.patient_id)?.full_name || 'Patient';
@@ -222,7 +217,7 @@ export const App = () => {
         type: 'queue_update'
       });
 
-      fetchAllData();
+      await fetchAllData();
       notifyOtherTabs();
     } catch (err) {
       console.error('Error adding patient to queue:', err);
