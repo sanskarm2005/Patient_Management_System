@@ -68,9 +68,23 @@ export const App = () => {
         .select('*')
         .eq('queue_date', todayStr);
 
-      console.log('TODAY:', todayStr);
-      console.log('QUEUE FROM SUPABASE:', queueList);
-      console.log('QUEUE FETCH ERROR:', queueError);
+      console.log("=================================");
+      console.log("TODAY:", todayStr);
+      console.log("QUEUE FETCH ERROR:", queueError);
+      console.log("QUEUE ROW COUNT:", queueList?.length);
+      console.log(
+        "QUEUE ROWS:",
+        queueList?.map(q => ({
+          id: q.id,
+          token: q.token_number,
+          patient_id: q.patient_id,
+          doctor_id: q.doctor_id,
+          status: q.status,
+          queue_date: q.queue_date,
+          arrival_time: q.arrival_time
+        }))
+      );
+      console.log("=================================");
 
       const enrichedQueue = (queueList || []).map(entry => ({
         ...entry,
