@@ -65,15 +65,15 @@ export const App = () => {
       const todayStr = new Date().toISOString().split('T')[0];
       const { data: queueList, error: queueError } = await supabase
         .from('queue_entries')
-        .select('*')
-        .eq('queue_date', todayStr);
+        .select('*');
 
       console.log("=================================");
       console.log("TODAY:", todayStr);
       console.log("QUEUE FETCH ERROR:", queueError);
-      console.log("QUEUE ROW COUNT:", queueList?.length);
+      console.log("ALL QUEUE ROW COUNT:", queueList?.length);
+
       console.log(
-        "QUEUE ROWS:",
+        "ALL QUEUE ROWS:",
         queueList?.map(q => ({
           id: q.id,
           token: q.token_number,
@@ -81,9 +81,11 @@ export const App = () => {
           doctor_id: q.doctor_id,
           status: q.status,
           queue_date: q.queue_date,
-          arrival_time: q.arrival_time
+          arrival_time: q.arrival_time,
+          created_at: q.created_at
         }))
       );
+
       console.log("=================================");
 
       const enrichedQueue = (queueList || []).map(entry => ({
@@ -126,10 +128,10 @@ export const App = () => {
         channel.postMessage({ type: 'QUEUE_UPDATED', timestamp: Date.now() });
         channel.close();
       }
-    } catch (e) {}
+    } catch (e) { }
     try {
       localStorage.setItem('medclinic_last_update', Date.now().toString());
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Realtime synchronization subscriptions & Cross-tab Broadcasting
@@ -145,7 +147,7 @@ export const App = () => {
           }
         };
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const handleStorageChange = (e) => {
       if (e.key === 'medclinic_last_update') {
@@ -195,11 +197,11 @@ export const App = () => {
   }, [user]);
 
   // --- DATABASE HELPERS ---
-  
+
   const handleAddPatientToQueue = async (data) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const todayQueue = queue.filter(e => e.queue_date === todayStr);
-    
+
     // Generate next token number
     const maxToken = todayQueue.reduce((max, e) => (e.token_number > max ? e.token_number : max), 0);
     const nextToken = maxToken + 1;
@@ -223,7 +225,7 @@ export const App = () => {
       // Log Audit Entry
       const patName = patients.find(p => p.id === data.patient_id)?.full_name || 'Patient';
       const docName = doctors.find(d => d.id === data.doctor_id)?.full_name || 'Doctor';
-      
+
       await handleAddAuditLog({
         action: 'Check In Queue',
         entity: 'Queue',
@@ -298,18 +300,18 @@ export const App = () => {
           const dbData = localStorage.getItem('medclinic_db_v1');
           if (dbData) {
             const db = JSON.parse(dbData);
-            db.queue_entries = (db.queue_entries || []).map(e => 
+            db.queue_entries = (db.queue_entries || []).map(e =>
               e.id === id ? { ...e, status: nextStatus, ...cleanMetadata } : e
             );
             localStorage.setItem('medclinic_db_v1', JSON.stringify(db));
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Re-fetch data but preserve active optimistic state changes
       const todayStr = new Date().toISOString().split('T')[0];
       const { data: queueList } = await supabase.from('queue_entries').select('*').eq('queue_date', todayStr);
-      
+
       if (queueList && queueList.length > 0) {
         setPatients(prevPatients => {
           const enrichedQueue = queueList.map(entry => {
@@ -432,16 +434,16 @@ export const App = () => {
     <BrowserRouter>
       <Routes>
         {/* Public Landing & Login */}
-        <Route 
-          path="/login" 
-          element={!user ? <Login /> : <Navigate to="/" replace />} 
+        <Route
+          path="/login"
+          element={!user ? <Login /> : <Navigate to="/" replace />}
         />
 
         {/* Public Booking Page */}
-        <Route 
-          path="/book" 
+        <Route
+          path="/book"
           element={
-            <PatientBooking 
+            <PatientBooking
               patients={patients}
               appointments={appointments}
               doctors={doctors}
@@ -449,26 +451,26 @@ export const App = () => {
               onAddAuditLog={handleAddAuditLog}
               onAddNotification={handleAddNotification}
             />
-          } 
+          }
         />
 
         {/* Public waiting room display */}
-        <Route 
-          path="/waiting-room" 
+        <Route
+          path="/waiting-room"
           element={
-            <WaitingRoom 
+            <WaitingRoom
               queue={queue}
               doctors={doctors}
             />
-          } 
+          }
         />
 
         {/* Protected layout routes */}
-        <Route 
-          path="/" 
+        <Route
+          path="/"
           element={
             user ? (
-              <Layout 
+              <Layout
                 theme={theme}
                 toggleTheme={toggleTheme}
                 user={user}
@@ -476,7 +478,7 @@ export const App = () => {
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
               >
-                <Dashboard 
+                <Dashboard
                   user={user}
                   queue={queue}
                   patients={patients}
@@ -492,14 +494,14 @@ export const App = () => {
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
 
-        <Route 
-          path="/queue" 
+        <Route
+          path="/queue"
           element={
             user ? (
-              <Layout 
+              <Layout
                 theme={theme}
                 toggleTheme={toggleTheme}
                 user={user}
@@ -507,7 +509,7 @@ export const App = () => {
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
               >
-                <Dashboard 
+                <Dashboard
                   user={user}
                   queue={queue}
                   patients={patients}
@@ -524,19 +526,19 @@ export const App = () => {
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
 
-        <Route 
-          path="/patients" 
-          element={<Navigate to="/" replace />} 
+        <Route
+          path="/patients"
+          element={<Navigate to="/" replace />}
         />
 
-        <Route 
-          path="/appointments" 
+        <Route
+          path="/appointments"
           element={
             user ? (
-              <Layout 
+              <Layout
                 theme={theme}
                 toggleTheme={toggleTheme}
                 user={user}
@@ -544,7 +546,7 @@ export const App = () => {
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
               >
-                <AppointmentsPage 
+                <AppointmentsPage
                   appointments={appointments}
                   patients={patients}
                   doctors={doctors}
@@ -558,15 +560,15 @@ export const App = () => {
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
 
-        <Route 
-          path="/audit-logs" 
+        <Route
+          path="/audit-logs"
           element={
             user ? (
               user.user_metadata?.role !== 'doctor' ? (
-                <Layout 
+                <Layout
                   theme={theme}
                   toggleTheme={toggleTheme}
                   user={user}
@@ -574,7 +576,7 @@ export const App = () => {
                   onMarkNotificationRead={handleMarkNotificationRead}
                   onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
                 >
-                  <AuditLogPage 
+                  <AuditLogPage
                     auditLogs={auditLogs}
                     doctors={doctors}
                   />
@@ -585,14 +587,14 @@ export const App = () => {
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
 
-        <Route 
-          path="/settings" 
+        <Route
+          path="/settings"
           element={
             user ? (
-              <Layout 
+              <Layout
                 theme={theme}
                 toggleTheme={toggleTheme}
                 user={user}
@@ -600,7 +602,7 @@ export const App = () => {
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
               >
-                <SettingsPage 
+                <SettingsPage
                   doctors={doctors}
                   onAddAuditLog={handleAddAuditLog}
                 />
@@ -608,7 +610,7 @@ export const App = () => {
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
 
         {/* Fallback routing redirect */}
