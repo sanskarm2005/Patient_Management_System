@@ -146,7 +146,7 @@ export const ReceptionistDashboard = ({
     }
 
     setFormErrors({});
-    
+
     alert("Validation passed. Starting database insert...");
     
     try {
@@ -160,6 +160,8 @@ export const ReceptionistDashboard = ({
         phone_number: newPatientData.phone,
         gender: newPatientData.gender || 'Male'
       }).select().single();
+
+      alert("Supabase insert request completed");
 
       if (patientErr) {
         console.error('Error inserting patient:', patientErr);
