@@ -30,7 +30,7 @@ const MOCK_STORAGE_KEY = 'medclinic_db_v1';
 // Initial Seed Data
 const defaultDb = {
   profiles: [
-    { id: 'd1', full_name: 'Dr. Sarah Johnson', role: 'doctor', specialty: 'General Physician', room_number: 'Room 1', status: 'active', created_at: new Date().toISOString() },
+    { id: 'd1', full_name: 'Dr. Vijay Patil', role: 'doctor', specialty: 'General Physician', room_number: 'Room 1', status: 'active', created_at: new Date().toISOString() },
     { id: 'r1', full_name: 'Rhea Patel', role: 'receptionist', specialty: '', room_number: '', status: 'active', created_at: new Date().toISOString() }
   ],
   patients: [

@@ -195,7 +195,7 @@ insert into public.clinic_settings (id, clinic_name, avg_consultation_duration)
 values ('c0000000-0000-0000-0000-000000000001', 'MedClinic Specialists', 10);
 
 insert into public.profiles (id, full_name, role, specialty, room_number, status)
-values ('11111111-1111-1111-1111-111111111111', 'Dr. Sarah Johnson', 'doctor', 'General Physician', 'Room 1', 'active')
+values ('11111111-1111-1111-1111-111111111111', 'Dr. Vijay Patil', 'doctor', 'General Physician', 'Room 1', 'active')
 on conflict (id) do nothing;
 
 -- Fix foreign key constraints for authentication/profiles if needed
