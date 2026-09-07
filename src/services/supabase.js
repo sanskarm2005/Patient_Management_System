@@ -6,6 +6,13 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Determine if we should use mock data
 const isMock = !supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder') || supabaseAnonKey.includes('placeholder');
+console.log("SUPABASE DEBUG:", {
+  hasUrl: !!supabaseUrl,
+  hasAnonKey: !!supabaseAnonKey,
+  isMock,
+  url: supabaseUrl
+});
+
 
 // --- REAL SUPABASE CLIENT ---
 let realClient = null;
