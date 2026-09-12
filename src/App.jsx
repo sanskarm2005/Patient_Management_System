@@ -38,6 +38,7 @@ export const App = () => {
   const [doctors, setDoctors] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [dailySummaries, setDailySummaries] = useState([]);
 
   // Theme Toggle
   const toggleTheme = () => {
@@ -150,6 +151,26 @@ export const App = () => {
 
         const { data: logList } = await supabase.from('audit_logs').select('*');
         setAuditLogs(logList || []);
+
+        // Fetch today's compact doctor summaries
+        const todaySummaryDate = getLocalDateString();
+
+        const { data: dailySummaryData, error: dailySummaryError } =
+          await supabase
+            .from('daily_doctor_summaries')
+            .select('*')
+            .eq('summary_date', todaySummaryDate)
+            .order('doctor_name', { ascending: true });
+
+        if (dailySummaryError) {
+          console.warn(
+            'Daily doctor summary fetch error:',
+            dailySummaryError.message
+          );
+        } else {
+          setDailySummaries(dailySummaryData || []);
+        }
+
       } else {
         // Clear staff data if logged out
         setAppointments([]);
@@ -700,8 +721,7 @@ export const App = () => {
                   onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
                 >
                   <AuditLogPage
-                    auditLogs={auditLogs}
-                    doctors={doctors}
+                    dailySummaries={dailySummaries}
                   />
                 </Layout>
               ) : (
