@@ -313,119 +313,150 @@ export const App = () => {
   };
 
   const handleUpdateQueueStatus = async (id, nextStatus, metadata = {}) => {
+    console.log('STATUS HANDLER CALLED:', {
+      id,
+      nextStatus,
+      metadata
+    });
+
     const cleanMetadata = { ...metadata };
 
-    // Sanitize called_by UUID format and verify against doctors list
     if (cleanMetadata.called_by && !isUuid(cleanMetadata.called_by)) {
       cleanMetadata.called_by = null;
     }
+
     if (cleanMetadata.called_by && doctors && doctors.length > 0) {
-      const isKnownDoctor = doctors.some(d => d.id === cleanMetadata.called_by);
+      const isKnownDoctor = doctors.some(
+        d => d.id === cleanMetadata.called_by
+      );
+
       if (!isKnownDoctor) {
         cleanMetadata.called_by = null;
       }
     }
 
     if (cleanMetadata.doctor_id && !isUuid(cleanMetadata.doctor_id)) {
-      cleanMetadata.doctor_id = doctors[0]?.id || '11111111-1111-1111-1111-111111111111';
+      cleanMetadata.doctor_id =
+        doctors[0]?.id || '11111111-1111-1111-1111-111111111111';
     }
 
-    // 1. Optimistically update local React queue state immediately
-    setQueue(prev => prev.map(e => e.id === id ? { ...e, status: nextStatus, ...cleanMetadata } : e));
-    notifyOtherTabs();
-
     try {
+      let previousEntry = null;
+
+      // Read the existing queue entry BEFORE changing its status.
       if (isUuid(id)) {
-        let { data: updated, error } = await supabase.from('queue_entries')
-          .update({ status: nextStatus, ...cleanMetadata })
+        const { data: existingEntry, error: existingEntryError } =
+          await supabase
+            .from('queue_entries')
+            .select('id, doctor_id, status')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (existingEntryError) {
+          console.warn(
+            'Could not read existing queue entry:',
+            existingEntryError.message
+          );
+        } else {
+          previousEntry = existingEntry;
+        }
+      }
+
+      // Optimistically update the UI
+      setQueue(prev =>
+        prev.map(e =>
+          e.id === id
+            ? {
+              ...e,
+              status: nextStatus,
+              ...cleanMetadata
+            }
+            : e
+        )
+      );
+
+      notifyOtherTabs();
+
+      // Update Supabase
+      if (isUuid(id)) {
+        let { error } = await supabase
+          .from('queue_entries')
+          .update({
+            status: nextStatus,
+            ...cleanMetadata
+          })
           .eq('id', id)
           .select();
 
         if (error) {
-          console.warn('Supabase status update error:', error.message || error);
-          // If foreign key constraint failed (e.g. called_by not in profiles), retry with called_by: null
-          if (error.code === '23503' || (error.message && (error.message.includes('foreign key constraint') || error.message.includes('called_by_fkey')))) {
-            const fallbackMetadata = { ...cleanMetadata, called_by: null };
-            const { error: retryError } = await supabase.from('queue_entries')
-              .update({ status: nextStatus, ...fallbackMetadata })
+          console.warn(
+            'Supabase status update error:',
+            error.message || error
+          );
+
+          if (
+            error.code === '23503' ||
+            (
+              error.message &&
+              (
+                error.message.includes('foreign key constraint') ||
+                error.message.includes('called_by_fkey')
+              )
+            )
+          ) {
+            const fallbackMetadata = {
+              ...cleanMetadata,
+              called_by: null
+            };
+
+            const { error: retryError } = await supabase
+              .from('queue_entries')
+              .update({
+                status: nextStatus,
+                ...fallbackMetadata
+              })
               .eq('id', id)
               .select();
 
             if (retryError) {
-              console.warn('Retry status update error:', retryError.message || retryError);
+              console.warn(
+                'Retry status update error:',
+                retryError.message || retryError
+              );
             } else {
-              console.info('Status updated successfully with fallback called_by=null');
+              console.info(
+                'Status updated successfully with fallback called_by=null'
+              );
             }
           }
         }
-      } else {
-        // Mock DB fallback for non-UUID initial entries (e.g. q1, q2)
-        try {
-          const dbData = localStorage.getItem('medclinic_db_v1');
-          if (dbData) {
-            const db = JSON.parse(dbData);
-            db.queue_entries = (db.queue_entries || []).map(e =>
-              e.id === id ? { ...e, status: nextStatus, ...cleanMetadata } : e
-            );
-            localStorage.setItem('medclinic_db_v1', JSON.stringify(db));
-          }
-        } catch (e) { }
-      }
 
-      // Re-fetch data but preserve active optimistic state changes
-      const todayStr = getLocalDateString();
-      const { data: queueList } = await supabase
-      .from('queue_entries')
-      .select('*')
-      .eq('queue_date', todayStr);
+        // --------------------------------------------------
+        // COMPACT DAILY DOCTOR SUMMARY
+        // --------------------------------------------------
 
-      if (queueList && queueList.length > 0) {
-        setPatients(prevPatients => {
-          const enrichedQueue = queueList.map(entry => {
-            if (entry.id === id) {
-              return { ...entry, status: nextStatus, ...cleanMetadata, patient: prevPatients.find(p => p.id === entry.patient_id) };
-            }
-            return { ...entry, patient: prevPatients.find(p => p.id === entry.patient_id) };
-          });
-          setQueue(enrichedQueue);
-          return prevPatients;
-        });
-      }
-      // Update compact daily doctor summary
-      if (
-        ['completed', 'no_show', 'cancelled'].includes(nextStatus) &&
-        isUuid(id)
-      ) {
-        // Read the current status directly from Supabase
-        // so the same final status cannot be counted twice.
-        const { data: currentEntry, error: currentEntryError } = await supabase
-          .from('queue_entries')
-          .select('id, doctor_id, status')
-          .eq('id', id)
-          .maybeSingle();
-
-        if (currentEntryError) {
-          console.warn(
-            'Could not read current queue status:',
-            currentEntryError.message
-          );
-        } else if (
-          currentEntry &&
-          currentEntry.status !== nextStatus &&
-          currentEntry.doctor_id
+        if (
+          ['completed', 'no_show', 'cancelled'].includes(nextStatus) &&
+          previousEntry &&
+          previousEntry.status !== nextStatus &&
+          previousEntry.doctor_id
         ) {
-          const doctor = doctors.find(d => d.id === currentEntry.doctor_id);
+          const doctor = doctors.find(
+            d => d.id === previousEntry.doctor_id
+          );
 
           if (doctor) {
             const todayStr = getLocalDateString();
 
-            const { data: existingSummary, error: summaryFetchError } =
-              await supabase
-                .from('daily_doctor_summaries')
-                .select('*')
-                .eq('summary_date', todayStr)
-                .eq('doctor_id', currentEntry.doctor_id)
-                .maybeSingle();
+            const {
+              data: existingSummary,
+              error: summaryFetchError
+            } = await supabase
+              .from('daily_doctor_summaries')
+              .select('*')
+              .eq('summary_date', todayStr)
+              .eq('doctor_id', previousEntry.doctor_id)
+              .maybeSingle();
 
             if (summaryFetchError) {
               console.warn(
@@ -435,7 +466,7 @@ export const App = () => {
             } else {
               const summary = existingSummary || {
                 summary_date: todayStr,
-                doctor_id: currentEntry.doctor_id,
+                doctor_id: previousEntry.doctor_id,
                 doctor_name: doctor.full_name,
                 completed_count: 0,
                 no_show_count: 0,
@@ -443,18 +474,23 @@ export const App = () => {
               };
 
               if (nextStatus === 'completed') {
-                summary.completed_count += 1;
+                summary.completed_count =
+                  (summary.completed_count || 0) + 1;
               }
 
               if (nextStatus === 'no_show') {
-                summary.no_show_count += 1;
+                summary.no_show_count =
+                  (summary.no_show_count || 0) + 1;
               }
 
               if (nextStatus === 'cancelled') {
-                summary.cancelled_count += 1;
+                summary.cancelled_count =
+                  (summary.cancelled_count || 0) + 1;
               }
 
-              const { error: summarySaveError } = await supabase
+              const {
+                error: summarySaveError
+              } = await supabase
                 .from('daily_doctor_summaries')
                 .upsert(summary, {
                   onConflict: 'summary_date,doctor_id'
@@ -465,16 +501,86 @@ export const App = () => {
                   'Daily summary save error:',
                   summarySaveError.message
                 );
+              } else {
+                console.log(
+                  'DAILY SUMMARY UPDATED:',
+                  summary
+                );
               }
             }
           }
         }
-      }
 
-      notifyOtherTabs();
-      return true;
+        // Refresh today's queue from Supabase
+        const todayStr = getLocalDateString();
+
+        const {
+          data: queueList
+        } = await supabase
+          .from('queue_entries')
+          .select('*')
+          .eq('queue_date', todayStr);
+
+        if (queueList && queueList.length > 0) {
+          setPatients(prevPatients => {
+            const enrichedQueue = queueList.map(entry => ({
+              ...entry,
+              patient: prevPatients.find(
+                p => p.id === entry.patient_id
+              )
+            }));
+
+            setQueue(enrichedQueue);
+
+            return prevPatients;
+          });
+        }
+
+        notifyOtherTabs();
+
+        return true;
+      } else {
+        // Mock/localStorage fallback
+        try {
+          const dbData = localStorage.getItem(
+            'medclinic_db_v1'
+          );
+
+          if (dbData) {
+            const db = JSON.parse(dbData);
+
+            db.queue_entries = (
+              db.queue_entries || []
+            ).map(e =>
+              e.id === id
+                ? {
+                  ...e,
+                  status: nextStatus,
+                  ...cleanMetadata
+                }
+                : e
+            );
+
+            localStorage.setItem(
+              'medclinic_db_v1',
+              JSON.stringify(db)
+            );
+          }
+        } catch (e) {
+          console.warn(
+            'Local queue update error:',
+            e
+          );
+        }
+
+        return true;
+      }
     } catch (err) {
-      console.warn('Queue status update notice:', err);
+      console.warn(
+        'Queue status update notice:',
+        err
+      );
+
       return true;
     }
   };
