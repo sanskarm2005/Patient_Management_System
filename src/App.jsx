@@ -324,6 +324,71 @@ export const App = () => {
           return prevPatients;
         });
       }
+      // Update compact daily doctor summary
+      if (
+        ['completed', 'no_show', 'cancelled'].includes(nextStatus) &&
+        isUuid(id)
+      ) {
+        const queueEntry = queue.find(e => e.id === id);
+
+        if (queueEntry?.doctor_id) {
+          const doctor = doctors.find(d => d.id === queueEntry.doctor_id);
+
+          if (doctor) {
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const { data: existingSummary, error: summaryFetchError } =
+              await supabase
+                .from('daily_doctor_summaries')
+                .select('*')
+                .eq('summary_date', todayStr)
+                .eq('doctor_id', queueEntry.doctor_id)
+                .maybeSingle();
+
+            if (summaryFetchError) {
+              console.warn(
+                'Daily summary fetch error:',
+                summaryFetchError.message
+              );
+            } else {
+              const summary = existingSummary || {
+                summary_date: todayStr,
+                doctor_id: queueEntry.doctor_id,
+                doctor_name: doctor.full_name,
+                completed_count: 0,
+                no_show_count: 0,
+                cancelled_count: 0
+              };
+
+              if (nextStatus === 'completed') {
+                summary.completed_count += 1;
+              }
+
+              if (nextStatus === 'no_show') {
+                summary.no_show_count += 1;
+              }
+
+              if (nextStatus === 'cancelled') {
+                summary.cancelled_count += 1;
+              }
+
+              const { error: summarySaveError } = await supabase
+                .from('daily_doctor_summaries')
+                .upsert(summary, {
+                  onConflict: 'summary_date,doctor_id'
+                });
+
+              if (summarySaveError) {
+                console.warn(
+                  'Daily summary save error:',
+                  summarySaveError.message
+                );
+              }
+            }
+          }
+        }
+      }
+
       notifyOtherTabs();
       return true;
     } catch (err) {
