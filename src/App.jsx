@@ -16,6 +16,16 @@ import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 import { formatToken } from './services/queueService';
 
+const getLocalDateString = () => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
 export const App = () => {
   const [theme, setTheme] = useState(() => localStorage.getItem('medclinic_theme') || 'light');
   const [user, setUser] = useState(null);
@@ -51,9 +61,44 @@ export const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const cleanupForNewDay = async () => {
+    const todayStr = getLocalDateString();
+    const cleanupKey = 'medclinic_last_cleanup_date';
+
+    try {
+      const lastCleanupDate = localStorage.getItem(cleanupKey);
+
+      // Already cleaned for today's date
+      if (lastCleanupDate === todayStr) {
+        return;
+      }
+
+      console.log('NEW DAY DETECTED - Running clinic cleanup:', todayStr);
+
+      // 1. Delete all queue entries from previous days
+      const { error: queueCleanupError } = await supabase
+        .from('queue_entries')
+        .delete()
+        .lt('queue_date', todayStr);
+
+      if (queueCleanupError) {
+        throw queueCleanupError;
+      }
+
+      // Remember that today's queue cleanup has completed
+      localStorage.setItem(cleanupKey, todayStr);
+
+      console.log('DAILY CLEANUP COMPLETE:', todayStr);
+    } catch (err) {
+      console.error('Daily cleanup failed:', err);
+    }
+  };
+
   // Fetch Database Data (Public vs Protected Separation)
   const fetchAllData = async () => {
     try {
+      await cleanupForNewDay();
+
       // 1. PUBLIC CLINIC DATA (Always fetched, even for public TV display)
       const { data: profileList } = await supabase.from('profiles').select('*');
       setDoctors(profileList?.filter(p => p.role === 'doctor') || []);
@@ -67,26 +112,26 @@ export const App = () => {
         .from('queue_entries')
         .select('*');
 
-      console.log("=================================");
-      console.log("TODAY:", todayStr);
-      console.log("QUEUE FETCH ERROR:", queueError);
-      console.log("ALL QUEUE ROW COUNT:", queueList?.length);
+      // console.log("=================================");
+      // console.log("TODAY:", todayStr);
+      // console.log("QUEUE FETCH ERROR:", queueError);
+      // console.log("ALL QUEUE ROW COUNT:", queueList?.length);
 
-      console.log(
-        "ALL QUEUE ROWS:",
-        queueList?.map(q => ({
-          id: q.id,
-          token: q.token_number,
-          patient_id: q.patient_id,
-          doctor_id: q.doctor_id,
-          status: q.status,
-          queue_date: q.queue_date,
-          arrival_time: q.arrival_time,
-          created_at: q.created_at
-        }))
-      );
+      // console.log(
+      //   "ALL QUEUE ROWS:",
+      //   queueList?.map(q => ({
+      //     id: q.id,
+      //     token: q.token_number,
+      //     patient_id: q.patient_id,
+      //     doctor_id: q.doctor_id,
+      //     status: q.status,
+      //     queue_date: q.queue_date,
+      //     arrival_time: q.arrival_time,
+      //     created_at: q.created_at
+      //   }))
+      // );
 
-      console.log("=================================");
+      // console.log("=================================");
 
       const enrichedQueue = (queueList || []).map(entry => ({
         ...entry,
@@ -199,7 +244,7 @@ export const App = () => {
   // --- DATABASE HELPERS ---
 
   const handleAddPatientToQueue = async (data) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     const todayQueue = queue.filter(e => e.queue_date === todayStr);
 
     // Generate next token number
@@ -309,8 +354,11 @@ export const App = () => {
       }
 
       // Re-fetch data but preserve active optimistic state changes
-      const todayStr = new Date().toISOString().split('T')[0];
-      const { data: queueList } = await supabase.from('queue_entries').select('*').eq('queue_date', todayStr);
+      const todayStr = getLocalDateString();
+      const { data: queueList } = await supabase
+      .from('queue_entries')
+      .select('*')
+      .eq('queue_date', todayStr);
 
       if (queueList && queueList.length > 0) {
         setPatients(prevPatients => {
@@ -329,20 +377,35 @@ export const App = () => {
         ['completed', 'no_show', 'cancelled'].includes(nextStatus) &&
         isUuid(id)
       ) {
-        const queueEntry = queue.find(e => e.id === id);
+        // Read the current status directly from Supabase
+        // so the same final status cannot be counted twice.
+        const { data: currentEntry, error: currentEntryError } = await supabase
+          .from('queue_entries')
+          .select('id, doctor_id, status')
+          .eq('id', id)
+          .maybeSingle();
 
-        if (queueEntry?.doctor_id) {
-          const doctor = doctors.find(d => d.id === queueEntry.doctor_id);
+        if (currentEntryError) {
+          console.warn(
+            'Could not read current queue status:',
+            currentEntryError.message
+          );
+        } else if (
+          currentEntry &&
+          currentEntry.status !== nextStatus &&
+          currentEntry.doctor_id
+        ) {
+          const doctor = doctors.find(d => d.id === currentEntry.doctor_id);
 
           if (doctor) {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = getLocalDateString();
 
             const { data: existingSummary, error: summaryFetchError } =
               await supabase
                 .from('daily_doctor_summaries')
                 .select('*')
                 .eq('summary_date', todayStr)
-                .eq('doctor_id', queueEntry.doctor_id)
+                .eq('doctor_id', currentEntry.doctor_id)
                 .maybeSingle();
 
             if (summaryFetchError) {
@@ -353,7 +416,7 @@ export const App = () => {
             } else {
               const summary = existingSummary || {
                 summary_date: todayStr,
-                doctor_id: queueEntry.doctor_id,
+                doctor_id: currentEntry.doctor_id,
                 doctor_name: doctor.full_name,
                 completed_count: 0,
                 no_show_count: 0,
@@ -413,21 +476,23 @@ export const App = () => {
 
   const handleAddNotification = async (data) => {
     try {
-      const { data: inserted, error } = await supabase.from('notifications').insert({
+      // Notifications are intentionally NOT saved to Supabase.
+      // They exist only in the current app session.
+      const notification = {
+        id: crypto.randomUUID(),
         user_id: isUuid(data.user_id) ? data.user_id : null,
         title: data.title,
         message: data.message,
         type: data.type || 'system',
-        is_read: false
-      }).select().single();
-      if (error) {
-        console.warn('Notification insert notice:', error.message);
-        return null;
-      }
-      fetchAllData();
-      return inserted;
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+
+      setNotifications(prev => [notification, ...prev]);
+
+      return notification;
     } catch (err) {
-      console.warn('Notification insert notice:', err);
+      console.warn('Notification error:', err);
       return null;
     }
   };
