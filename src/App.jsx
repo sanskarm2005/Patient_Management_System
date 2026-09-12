@@ -162,6 +162,12 @@ export const App = () => {
             .eq('summary_date', todaySummaryDate)
             .order('doctor_name', { ascending: true });
 
+        console.log('DAILY SUMMARY DEBUG:', {
+          todaySummaryDate,
+          dailySummaryData,
+          dailySummaryError
+        });
+
         if (dailySummaryError) {
           console.warn(
             'Daily doctor summary fetch error:',
