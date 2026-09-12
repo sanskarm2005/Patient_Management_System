@@ -605,6 +605,7 @@ export const App = () => {
                 <SettingsPage
                   doctors={doctors}
                   onAddAuditLog={handleAddAuditLog}
+                  onDoctorsChange={fetchAllData}
                 />
               </Layout>
             ) : (
