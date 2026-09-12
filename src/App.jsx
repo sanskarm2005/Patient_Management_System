@@ -145,8 +145,8 @@ export const App = () => {
         const { data: apptList } = await supabase.from('appointments').select('*');
         setAppointments(apptList || []);
 
-        const { data: notifList } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-        setNotifications(notifList || []);
+        // Notifications are session-only.
+        // They are not loaded from or saved to Supabase.
 
         const { data: logList } = await supabase.from('audit_logs').select('*');
         setAuditLogs(logList || []);
@@ -215,17 +215,10 @@ export const App = () => {
 
     // 4. PROTECTED SUBSCRIPTIONS (Listen to staff updates only when authenticated)
     let apptsChannel = null;
-    let notifsChannel = null;
 
     if (user) {
       apptsChannel = supabase.channel('realtime:appointments')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
-          fetchAllData();
-        })
-        .subscribe();
-
-      notifsChannel = supabase.channel('realtime:notifications')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
           fetchAllData();
         })
         .subscribe();
@@ -237,7 +230,6 @@ export const App = () => {
       clearInterval(pollInterval);
       queueChannel.unsubscribe();
       if (apptsChannel) apptsChannel.unsubscribe();
-      if (notifsChannel) notifsChannel.unsubscribe();
     };
   }, [user]);
 
@@ -526,21 +518,22 @@ export const App = () => {
   };
 
   const handleMarkNotificationRead = async (id) => {
-    try {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-      fetchAllData();
-    } catch (err) {
-      console.error(err);
-    }
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === id
+          ? { ...notification, is_read: true }
+          : notification
+      )
+    );
   };
 
   const handleMarkAllNotificationsRead = async () => {
-    try {
-      await supabase.from('notifications').update({ is_read: true }).eq('is_read', false);
-      fetchAllData();
-    } catch (err) {
-      console.error(err);
-    }
+    setNotifications(prev =>
+      prev.map(notification => ({
+        ...notification,
+        is_read: true
+      }))
+    );
   };
 
   if (authLoading) {
