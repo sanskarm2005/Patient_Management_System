@@ -250,7 +250,7 @@ export const ReceptionistDashboard = ({
                     <th style={{ width: '160px' }}>Patient Name</th>
                     <th style={{ width: '110px' }}>Visit Type</th>
                     <th style={{ width: '180px' }}>Doctor</th>
-                    <th>Reason</th>
+                    <th></th>
                     <th style={{ width: '110px' }}>Arrival</th>
                     <th style={{ width: '120px' }}>Status</th>
                     <th style={{ width: '230px' }}>Actions</th>
