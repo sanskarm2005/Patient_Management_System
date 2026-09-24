@@ -267,13 +267,19 @@ const mockSupabase = {
         const db = loadDb();
         let result = db[table] || [];
 
-        // If settings table and is object
+        // If settings table
         if (table === 'clinic_settings') {
           if (this._op === 'select') {
-            return Promise.resolve({ data: db.clinic_settings, error: null }).then(resolve);
+            const settingsObj = db.clinic_settings || { clinic_name: 'MedClinic Queue System', avg_consultation_duration: 10 };
+            const dataList = Array.isArray(settingsObj) ? settingsObj : [{ id: 'c0000000-0000-0000-0000-000000000001', ...settingsObj }];
+            return Promise.resolve({ data: this._single ? dataList[0] : dataList, error: null }).then(resolve);
           }
           if (this._op === 'update') {
-            db.clinic_settings = { ...db.clinic_settings, ...this._data };
+            if (Array.isArray(db.clinic_settings)) {
+              db.clinic_settings = db.clinic_settings.map(s => ({ ...s, ...this._data }));
+            } else {
+              db.clinic_settings = { id: 'c0000000-0000-0000-0000-000000000001', ...db.clinic_settings, ...this._data };
+            }
             saveDb(db);
             notifyRealtime('clinic_settings', 'UPDATE', db.clinic_settings);
             return Promise.resolve({ data: db.clinic_settings, error: null }).then(resolve);

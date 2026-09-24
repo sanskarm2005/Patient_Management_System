@@ -216,6 +216,7 @@
   font-weight: 700;
   font-family: var(--font-title);
   line-height: 1.1;
+  color: var(--text-primary);
 }
 
 .stat-icon {
@@ -717,6 +718,7 @@
     flex-direction: column;
     gap: 12px;
     box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
   }
   
   .mobile-card-header {
@@ -740,6 +742,7 @@
   .mobile-card-name {
     font-size: 1.1rem;
     font-weight: 600;
+    color: var(--text-primary);
   }
   
   .mobile-card-meta {
