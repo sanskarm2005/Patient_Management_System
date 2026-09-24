@@ -508,7 +508,7 @@ export const DoctorDashboard = ({
                     <th style={{ width: '80px' }}>Token</th>
                     <th style={{ width: '160px' }}>Patient Name</th>
                     <th style={{ width: '110px' }}>Visit Type</th>
-                    {/* <th>Reason</th> */}
+                    <th>Reason</th>
                     <th style={{ width: '110px' }}>Arrival Time</th>
                     <th style={{ width: '120px' }}>Status</th>
                     <th style={{ width: '230px' }}>Actions</th>
