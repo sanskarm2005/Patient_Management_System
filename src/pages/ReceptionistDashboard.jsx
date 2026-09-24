@@ -235,7 +235,7 @@ export const ReceptionistDashboard = ({
         <div style={{ padding: '0 24px 16px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3>Today's Clinic Queue</h3>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Active Patients: {activeQueue.length}
+            Active Patients for today: {activeQueue.length}
           </span>
         </div>
         
