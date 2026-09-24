@@ -150,8 +150,8 @@ export const AuditLogPage = ({ dailySummaries = [] }) => {
                           padding: '5px 10px',
                           borderRadius: '8px',
                           fontWeight: '700',
-                          backgroundColor: 'var(--success-light, #e8f5e9)',
-                          color: 'var(--success, #2e7d32)'
+                          backgroundColor: 'var(--success-light)',
+                          color: 'var(--success)'
                         }}
                       >
                         {summary.completed_count || 0}
@@ -169,8 +169,8 @@ export const AuditLogPage = ({ dailySummaries = [] }) => {
                           padding: '5px 10px',
                           borderRadius: '8px',
                           fontWeight: '700',
-                          backgroundColor: 'var(--warning-light, #fff8e1)',
-                          color: 'var(--warning, #f57c00)'
+                          backgroundColor: 'var(--warning-light)',
+                          color: 'var(--warning)'
                         }}
                       >
                         {summary.no_show_count || 0}
@@ -188,8 +188,8 @@ export const AuditLogPage = ({ dailySummaries = [] }) => {
                           padding: '5px 10px',
                           borderRadius: '8px',
                           fontWeight: '700',
-                          backgroundColor: 'var(--danger-light, #ffebee)',
-                          color: 'var(--danger, #c62828)'
+                          backgroundColor: 'var(--danger-light)',
+                          color: 'var(--danger)'
                         }}
                       >
                         {summary.cancelled_count || 0}

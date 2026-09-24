@@ -10,41 +10,92 @@ export const SettingsPage = ({ doctors, onAddAuditLog, onDoctorsChange }) => {
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [doctorForm, setDoctorForm] = useState({ full_name: '', specialty: '', room_number: '' });
 
-  // Read current settings on mount from localStorage
+  // Read current settings on mount from Supabase database
   React.useEffect(() => {
-    try {
-      const data = localStorage.getItem('medclinic_db_v1');
-      if (data) {
-        const db = JSON.parse(data);
-        if (db.clinic_settings) {
-          setClinicName(db.clinic_settings.clinic_name || 'MedClinic Queue System');
-          setAvgDuration(String(db.clinic_settings.avg_consultation_duration || '10'));
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase.from('clinic_settings').select('*');
+        if (!error && data) {
+          const setting = Array.isArray(data) ? data[0] : data;
+          if (setting) {
+            if (setting.clinic_name) setClinicName(setting.clinic_name);
+            if (setting.avg_consultation_duration) setAvgDuration(String(setting.avg_consultation_duration));
+            return;
+          }
         }
+      } catch (e) {
+        console.warn('Could not fetch clinic settings from Supabase, checking local cache:', e);
       }
-    } catch (e) { }
+
+      // Fallback to local storage DB
+      try {
+        const localData = localStorage.getItem('medclinic_db_v1');
+        if (localData) {
+          const db = JSON.parse(localData);
+          if (db.clinic_settings) {
+            setClinicName(db.clinic_settings.clinic_name || 'MedClinic Queue System');
+            setAvgDuration(String(db.clinic_settings.avg_consultation_duration || '10'));
+          }
+        }
+      } catch (e) { }
+    };
+
+    fetchSettings();
   }, []);
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      // Save settings to database
-      await supabase.from('clinic_settings').update({
-        clinic_name: clinicName,
-        avg_consultation_duration: Number(avgDuration)
-      });
+      // Query existing clinic_settings to get target row ID
+      const { data } = await supabase.from('clinic_settings').select('*');
+      const existingList = Array.isArray(data) ? data : (data ? [data] : []);
+      const existing = existingList[0];
+      const rowId = existing?.id || 'c0000000-0000-0000-0000-000000000001';
+
+      let saveErr = null;
+      if (existing?.id) {
+        const { error } = await supabase.from('clinic_settings').update({
+          clinic_name: clinicName,
+          avg_consultation_duration: Number(avgDuration)
+        }).eq('id', existing.id);
+        saveErr = error;
+      } else {
+        const { error } = await supabase.from('clinic_settings').upsert({
+          id: rowId,
+          clinic_name: clinicName,
+          avg_consultation_duration: Number(avgDuration)
+        });
+        saveErr = error;
+      }
+
+      if (saveErr) {
+        throw saveErr;
+      }
+
+      // Sync local storage DB cache
+      try {
+        const localData = localStorage.getItem('medclinic_db_v1');
+        const db = localData ? JSON.parse(localData) : {};
+        db.clinic_settings = {
+          id: rowId,
+          clinic_name: clinicName,
+          avg_consultation_duration: Number(avgDuration)
+        };
+        localStorage.setItem('medclinic_db_v1', JSON.stringify(db));
+      } catch (e) { }
 
       onAddAuditLog({
         action: 'Update Settings',
         entity: 'Settings',
-        entity_id: 'settings',
+        entity_id: rowId,
         metadata: { clinic_name: clinicName, avg_duration: avgDuration }
       });
 
       setSuccessMsg('Settings updated successfully!');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
-      console.error(err);
-      alert('Error saving settings: ' + err.message);
+      console.error('Error saving settings:', err);
+      alert('Error saving settings: ' + (err.message || err));
     }
   };
 
