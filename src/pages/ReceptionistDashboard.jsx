@@ -145,6 +145,18 @@ export const ReceptionistDashboard = ({
     }
 
     setFormErrors({});
+
+    // Capture values and close modal instantly for rapid UI responsiveness
+    const fullName = newPatientData.fullName.trim();
+    const phone = newPatientData.phone.trim();
+    const gender = newPatientData.gender || 'Male';
+
+    setIsAddModalOpen(false);
+    setNewPatientData({
+      fullName: '',
+      phone: '',
+      gender: 'Male'
+    });
     
     try {
       const assignedDoctorId = doctors[0]?.id || '11111111-1111-1111-1111-111111111111';
@@ -153,9 +165,9 @@ export const ReceptionistDashboard = ({
       
       const { data: patientData, error: patientErr } = await supabase.from('patients').insert({
         patient_id: patientIdStr,
-        full_name: newPatientData.fullName,
-        phone_number: newPatientData.phone,
-        gender: newPatientData.gender || 'Male'
+        full_name: fullName,
+        phone_number: phone,
+        gender: gender
       }).select().single();
 
       if (patientErr) {
@@ -169,24 +181,16 @@ export const ReceptionistDashboard = ({
           action: 'Create Patient',
           entity: 'Patient',
           entity_id: patientData.id,
-          metadata: { name: newPatientData.fullName, patient_id: patientIdStr }
+          metadata: { name: fullName, patient_id: patientIdStr }
         });
 
-        await onAddPatientToQueue({
+        onAddPatientToQueue({
           patient_id: patientData.id,
           doctor_id: assignedDoctorId,
           visit_type: 'walk-in',
-          reason: 'General Consultation',
           appointment_id: null
         });
       }
-
-      setIsAddModalOpen(false);
-      setNewPatientData({
-        fullName: '',
-        phone: '',
-        gender: 'Male'
-      });
     } catch (err) {
       console.error('Error adding patient to queue:', err);
     }
@@ -250,8 +254,7 @@ export const ReceptionistDashboard = ({
                     <th style={{ width: '160px' }}>Patient Name</th>
                     <th style={{ width: '110px' }}>Visit Type</th>
                     <th style={{ width: '180px' }}>Doctor</th>
-                    <th>Arrival</th>
-                    <th style={{ width: '110px' }}>Arrival</th>
+                    <th style={{ width: '110px' }}>Arrival Time</th>
                     <th style={{ width: '120px' }}>Status</th>
                     <th style={{ width: '230px' }}>Actions</th>
                   </tr>
@@ -272,9 +275,6 @@ export const ReceptionistDashboard = ({
                         </td>
                         <td style={{ textTransform: 'capitalize' }}>{entry.visit_type}</td>
                         <td>{doc?.full_name || 'Unassigned'}</td>
-                        <td style={{ color: 'var(--text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {entry.reason || '-'}
-                        </td>
                         <td>
                           {new Date(entry.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
@@ -309,6 +309,26 @@ export const ReceptionistDashboard = ({
                                   onClick={() => onUpdateQueueStatus(entry.id, 'no_show')}
                                 >
                                   No Show
+                                </button>
+                              </>
+                            )}
+                            {entry.status === 'no_show' && (
+                              <>
+                                <button 
+                                  className="btn btn-success"
+                                  style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', marginRight: '4px' }}
+                                  onClick={() => onUpdateQueueStatus(entry.id, 'completed', {
+                                    consultation_end_time: new Date().toISOString()
+                                  })}
+                                >
+                                  Complete
+                                </button>
+                                <button 
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', marginRight: '4px' }}
+                                  onClick={() => handleCallPatient(entry)}
+                                >
+                                  Call Patient
                                 </button>
                               </>
                             )}
@@ -356,7 +376,6 @@ export const ReceptionistDashboard = ({
                     <div className="mobile-card-body">
                       <div className="mobile-card-name">{formatPrivacyName(entry.patient?.full_name)}</div>
                       <div className="mobile-card-meta">Assigned: {doc?.full_name || 'Unassigned'}</div>
-                      {entry.reason && <div className="mobile-card-meta">Reason: {entry.reason}</div>}
                       <div className="mobile-card-meta">
                         Arrival: {new Date(entry.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -386,6 +405,24 @@ export const ReceptionistDashboard = ({
                             onClick={() => onUpdateQueueStatus(entry.id, 'no_show')}
                           >
                             No Show
+                          </button>
+                        </>
+                      )}
+                      {entry.status === 'no_show' && (
+                        <>
+                          <button 
+                            className="btn btn-success"
+                            onClick={() => onUpdateQueueStatus(entry.id, 'completed', {
+                              consultation_end_time: new Date().toISOString()
+                            })}
+                          >
+                            Complete
+                          </button>
+                          <button 
+                            className="btn btn-secondary"
+                            onClick={() => handleCallPatient(entry)}
+                          >
+                            Call Patient
                           </button>
                         </>
                       )}

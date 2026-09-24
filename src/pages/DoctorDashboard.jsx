@@ -49,10 +49,10 @@ export const DoctorDashboard = ({
 
   const [activeTab, setActiveTab] = useState('notes'); // 'notes' | 'history'
 
-  // Filter queue for this doctor's today entries (First-Come-First-Served order)
+  // Filter queue for this doctor's today entries (Newest at top order)
   const doctorTodayQueue = useMemo(() => {
     const docEntries = queue.filter(e => e.doctor_id === doctorId);
-    return sortQueue(docEntries, 'asc');
+    return sortQueue(docEntries, 'desc');
   }, [queue, doctorId]);
 
   // Active consultation patient details
@@ -508,7 +508,6 @@ export const DoctorDashboard = ({
                     <th style={{ width: '80px' }}>Token</th>
                     <th style={{ width: '160px' }}>Patient Name</th>
                     <th style={{ width: '110px' }}>Visit Type</th>
-                    <th>Arrival</th>
                     <th style={{ width: '110px' }}>Arrival Time</th>
                     <th style={{ width: '120px' }}>Status</th>
                     <th style={{ width: '230px' }}>Actions</th>
@@ -532,9 +531,6 @@ export const DoctorDashboard = ({
                           {formatPrivacyName(entry.patient?.full_name)}
                         </td>
                         <td style={{ textTransform: 'capitalize' }}>{entry.visit_type}</td>
-                        <td style={{ color: 'var(--text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {entry.reason || '-'}
-                        </td>
                         <td>
                           {new Date(entry.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
@@ -578,7 +574,18 @@ export const DoctorDashboard = ({
                                 Resume Notes
                               </button>
                             )}
-                            {entry.status !== 'completed' && entry.status !== 'cancelled' && (
+                            {entry.status === 'no_show' && (
+                              <button 
+                                className="btn btn-success"
+                                style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', marginRight: '4px' }}
+                                onClick={() => onUpdateQueueStatus(entry.id, 'completed', {
+                                  consultation_end_time: new Date().toISOString()
+                                })}
+                              >
+                                Complete
+                              </button>
+                            )}
+                            {entry.status !== 'completed' && entry.status !== 'cancelled' && entry.status !== 'no_show' && (
                               <button 
                                 className="btn btn-outline"
                                 style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', color: 'var(--danger)', marginLeft: '4px' }}
@@ -617,7 +624,6 @@ export const DoctorDashboard = ({
 
                     <div className="mobile-card-body">
                       <div className="mobile-card-name">{formatPrivacyName(entry.patient?.full_name)}</div>
-                      {entry.reason && <div className="mobile-card-meta">Reason: {entry.reason}</div>}
                       <div className="mobile-card-meta">
                         Arrival: {new Date(entry.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -656,7 +662,17 @@ export const DoctorDashboard = ({
                           Open Consultation Notes
                         </button>
                       )}
-                      {entry.status !== 'completed' && entry.status !== 'cancelled' && (
+                      {entry.status === 'no_show' && (
+                        <button 
+                          className="btn btn-success"
+                          onClick={() => onUpdateQueueStatus(entry.id, 'completed', {
+                            consultation_end_time: new Date().toISOString()
+                          })}
+                        >
+                          Complete
+                        </button>
+                      )}
+                      {entry.status !== 'completed' && entry.status !== 'cancelled' && entry.status !== 'no_show' && (
                         <button 
                           className="btn btn-outline"
                           onClick={() => onUpdateQueueStatus(entry.id, 'no_show')}
