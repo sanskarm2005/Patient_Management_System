@@ -286,26 +286,35 @@ export const App = () => {
         throw error;
       }
 
-      // Log Audit Entry
       const patName = patients.find(p => p.id === data.patient_id)?.full_name || 'Patient';
       const docName = doctors.find(d => d.id === data.doctor_id)?.full_name || 'Doctor';
 
-      await handleAddAuditLog({
+      // Optimistically push inserted entry into local queue state instantly
+      if (inserted) {
+        const fullPatient = patients.find(p => p.id === data.patient_id);
+        const newQueueEntry = {
+          ...inserted,
+          patient: fullPatient || { id: data.patient_id, full_name: patName }
+        };
+        setQueue(prev => [...prev, newQueueEntry]);
+      }
+
+      // Perform audit log, notification, and fetch in background
+      handleAddAuditLog({
         action: 'Check In Queue',
         entity: 'Queue',
         entity_id: inserted?.id || null,
         metadata: { token: nextToken, patient: patName, doctor: docName }
       });
 
-      // Trigger notification
-      await handleAddNotification({
+      handleAddNotification({
         title: 'Patient Checked In',
         message: `${patName} checked in for ${docName}. Token: ${formatToken(nextToken)}.`,
         type: 'queue_update'
       });
 
-      await fetchAllData();
       notifyOtherTabs();
+      fetchAllData();
     } catch (err) {
       console.error('Error adding patient to queue:', err);
       alert(`QUEUE ERROR: ${err.message || 'Unknown error'}`);
@@ -436,10 +445,13 @@ export const App = () => {
         // --------------------------------------------------
 
         if (
-          ['completed', 'no_show', 'cancelled'].includes(nextStatus) &&
           previousEntry &&
           previousEntry.status !== nextStatus &&
-          previousEntry.doctor_id
+          previousEntry.doctor_id &&
+          (
+            ['completed', 'no_show', 'cancelled'].includes(nextStatus) ||
+            ['completed', 'no_show', 'cancelled'].includes(previousEntry.status)
+          )
         ) {
           const doctor = doctors.find(
             d => d.id === previousEntry.doctor_id
@@ -473,6 +485,16 @@ export const App = () => {
                 cancelled_count: 0
               };
 
+              // Decrement previous state count if moving out of a summary state
+              if (previousEntry.status === 'no_show' && (summary.no_show_count || 0) > 0) {
+                summary.no_show_count -= 1;
+              } else if (previousEntry.status === 'completed' && (summary.completed_count || 0) > 0) {
+                summary.completed_count -= 1;
+              } else if (previousEntry.status === 'cancelled' && (summary.cancelled_count || 0) > 0) {
+                summary.cancelled_count -= 1;
+              }
+
+              // Increment new state count if moving into a summary state
               if (nextStatus === 'completed') {
                 summary.completed_count =
                   (summary.completed_count || 0) + 1;

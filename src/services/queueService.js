@@ -5,11 +5,11 @@
 // Status priority order for display and calling
 const STATUS_PRIORITY = {
   'in_consultation': 1,
-  'called': 2,
-  'waiting': 3,
-  'no_show': 4,
-  'completed': 5,
-  'cancelled': 6
+  'called': 1,
+  'waiting': 1,
+  'no_show': 2,
+  'completed': 3,
+  'cancelled': 4
 };
 
 /**
@@ -141,7 +141,7 @@ export const isValidTransition = (currentStatus, nextStatus) => {
     'called': ['in_consultation', 'no_show', 'waiting'],
     'in_consultation': ['completed'],
     'completed': [],
-    'no_show': ['waiting', 'cancelled'],
+    'no_show': ['waiting', 'completed', 'cancelled'],
     'cancelled': []
   };
 
